@@ -1,6 +1,9 @@
 ﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Collections.Generic;
+using System.Linq;
+
 namespace System.CommandLine.Rendering.Views
 {
     public class StackLayoutView : LayoutView<View>
@@ -30,7 +33,7 @@ namespace System.CommandLine.Rendering.Views
             }
         }
 
-        private void RenderVertical(Region region, ConsoleRenderer renderer)
+        protected virtual void RenderVertical(Region region, ConsoleRenderer renderer)
         {
             var left = region.Left;
             var top = region.Top;
@@ -127,6 +130,78 @@ namespace System.CommandLine.Rendering.Views
 
             return new Size(totalWidth, maxHeight);
         }
+    }
+
+    public enum ScrollDirection
+    {
+        Up,
+        Down
+    }
+
+    public class ScrollableLayoutView : StackLayoutView
+    {
+        public ScrollDirection ScrollDirection { get; }
+
+        public ScrollableLayoutView(ScrollDirection scrollDirection)
+        {
+            ScrollDirection = scrollDirection;
+        }
+
+        public override IReadOnlyList<View> Children => base.Children.Reverse().ToList().AsReadOnly();
+
+        protected override void RenderVertical(Region region, ConsoleRenderer renderer)
+        {
+            switch (ScrollDirection)
+            {
+                case ScrollDirection.Up:
+                    RenderVerticalScrollUp(region, renderer);
+                    break;
+                case ScrollDirection.Down:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private void RenderVerticalScrollUp(Region region, ConsoleRenderer renderer)
+        {
+            var left = region.Left;
+            var top = region.Top + region.Height;
+            var height = region.Height;
+
+            foreach (var child in Children)
+            {
+                if (height <= 0)
+                {
+                    break;
+                }
+                var size = child.Measure(renderer, new Size(region.Width, height));
+                int renderHeight = Math.Min(height, size.Height);
+                top -= size.Height;
+                height -= renderHeight;
+                var r = new Region(left, top, size.Width, renderHeight);
+                child.Render(renderer, r);
+            }
+        }
+
+        public override void Add(View child)
+        {
+            base.Add(child);
+            OnUpdated();
+        }
+
+        public override bool Remove(View child)
+        {
+            var removed = base.Remove(child);
+            if (removed)
+            {
+                OnUpdated();
+            }
+
+            return removed;
+        }
+
+        // FromObservable fuer die Children, aber update ist hier add item, nicht content children changed
     }
 }
 
