@@ -12,7 +12,7 @@ namespace System.CommandLine.Rendering.Views
         where T : View
     {
         private readonly List<T> _children = new List<T>();
-        public IReadOnlyList<T> Children => _children.AsReadOnly();
+        public virtual IReadOnlyList<T> Children => _children.AsReadOnly();
 
         public virtual void Add(T child)
         {
@@ -22,7 +22,7 @@ namespace System.CommandLine.Rendering.Views
             }
 
             _children.Add(child);
-            
+
             child.Updated -= OnChildUpdated;
             child.Updated += OnChildUpdated;
         }
