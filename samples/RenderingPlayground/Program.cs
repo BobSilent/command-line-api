@@ -2,11 +2,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
+using System.Collections.Generic;
 using System.CommandLine.Invocation;
 using System.CommandLine.Rendering;
 using System.CommandLine.Rendering.Views;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Process = System.Diagnostics.Process;
 
@@ -93,15 +95,49 @@ namespace RenderingPlayground
 
                 case SampleName.TableView:
                 {
-                    var table = new TableView<Process>
-                                {
-                                    Items = Process.GetProcesses().Where(x => !string.IsNullOrEmpty(x.MainWindowTitle)).OrderBy(p => p.ProcessName).ToList()
-                                };
-                    table.AddColumn(process => $"{process.ProcessName} ", "Name");
-                    table.AddColumn(process => ContentView.FromObservable(process.TrackCpuUsage(), x => $"{x.UsageTotal:P}"), "CPU", ColumnDefinition.Star(1));
+                        //var table = new TableView<Process>
+                        //            {
+                        //                Items = Process.GetProcesses().Where(x => !string.IsNullOrEmpty(x.MainWindowTitle)).OrderBy(p => p.ProcessName).ToList()
+                        //            };
+                        //table.AddColumn(process => $"{process.ProcessName} ", "Name");
+                        //table.AddColumn(process => ContentView.FromObservable(process.TrackCpuUsage(), x => $"{x.UsageTotal:P}"), "CPU", ColumnDefinition.Star(1));
 
-                    var screen = new ScreenView(renderer: consoleRenderer, console) { Child = table };
-                    screen.Render();
+                        //var screen = new ScreenView(renderer: consoleRenderer, console) { Child = table };
+                        //screen.Render();
+
+                    var log = new ScrollingConsole();
+                    var view = ScrollableLayoutView.FromObservable(log, ScrollDirection.Up);
+
+                    //var gridView = new GridView();
+                    //gridView.SetColumns(ColumnDefinition.Fixed(13), ColumnDefinition.Fixed(1), ColumnDefinition.SizeToContent());
+                    //gridView.SetRows(RowDefinition.Fixed(5), RowDefinition.Fixed(1), RowDefinition.Fixed(20), RowDefinition.Star(1));
+                    //gridView.SetChild(new ContentView("________________________________________________"), 2, 1);
+                    
+                    //gridView.SetChild(new StackLayoutView(Orientation.Vertical) { new ContentView("|"), new ContentView("|"), new ContentView("|"), new ContentView("|"), new ContentView("|") }, 1, 2);
+
+                    //gridView.SetChild(view, 2, 2);
+                    //gridView.SetChild(new ContentView("================================================"), 2, 3);
+
+
+                    //var stackView = new StackLayoutView(Orientation.Vertical);
+                    //stackView.Add(view);
+                    //stackView.Add(new ContentView("Final Static Text Line"));
+
+                    var gridView = new GridView();
+                    gridView.SetRows(RowDefinition.SizeToContent(), RowDefinition.Fixed(1));
+                    //gridView.SetRows(RowDefinition.Fixed(1), RowDefinition.SizeToContent());
+                    gridView.SetColumns(ColumnDefinition.Star(1));
+                    gridView.SetChild(view, 0, 0);
+                    gridView.SetChild(new ContentView("Final Static Text Line"), 0, 1);
+
+                        //var renderRegion = new Region(13, 5, height: 3);
+                        var screen = new ScreenView(renderer: consoleRenderer, console) { Child = gridView };
+                    screen.Render(Region.Scrolling);
+                    //console.Append(view);
+                    //view.Render(consoleRenderer, renderRegion);
+
+                    Observable.Interval(TimeSpan.FromSeconds(1)).Subscribe(l => log.WriteLine($"New Message {l}"));
+
                 }
                     break;
 
@@ -288,6 +324,65 @@ namespace RenderingPlayground
         private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
             throw new NotImplementedException();
+        }
+    }
+
+
+    public interface IScrollingConsole : IObservable<string>
+    {
+        void WriteLine(string message);
+        void Subscribe(string subscriberName, Action<string> action);
+        //void Subscribe(string subscriberName, Func<ChatMessageReceivedEvent, bool> predicate, Action<ChatMessageReceivedEvent> action);
+    }
+
+    internal class ScrollingConsole : IScrollingConsole, IDisposable
+    {
+        private readonly Subject<string> _subject;
+        private readonly Dictionary<string, IDisposable> _subscribers;
+
+
+        public ScrollingConsole()
+        {
+            _subject = new Subject<string>();
+            _subscribers = new Dictionary<string, IDisposable>();
+        }
+
+        /// <inheritdoc />
+        public void WriteLine(string message)
+        {
+            _subject.OnNext(message);
+        }
+
+
+        /// <inheritdoc />
+        public void Subscribe(string subscriberName, Action<string> action)
+        {
+            if (!_subscribers.ContainsKey(subscriberName))
+            {
+                _subscribers.Add(subscriberName, _subject.Subscribe(action));
+            }
+        }
+
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            _subject?.Dispose();
+
+            foreach (var subscriber in _subscribers)
+            {
+                subscriber.Value.Dispose();
+            }
+        }
+
+
+        /// <inheritdoc />
+        public IDisposable Subscribe(IObserver<string> observer)
+        {
+            var subscriberName = $"anonymous_{observer.GetHashCode()}";
+            Subscribe(subscriberName, observer.OnNext);
+
+            return _subscribers[subscriberName];
         }
     }
 }
