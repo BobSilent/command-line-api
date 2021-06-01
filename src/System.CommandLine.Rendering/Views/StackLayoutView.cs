@@ -157,6 +157,7 @@ namespace System.CommandLine.Rendering.Views
                     RenderVerticalScrollUp(region, renderer);
                     break;
                 case ScrollDirection.Down:
+                    RenderVerticalScrollDown(region, renderer);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -166,7 +167,37 @@ namespace System.CommandLine.Rendering.Views
         private void RenderVerticalScrollUp(Region region, ConsoleRenderer renderer)
         {
             var left = region.Left;
-            var top = region.Top + region.Height;
+            var top = region.Top;// + region.Height;
+            var height = region.Height;
+
+            var renderChildren = new List<(Size size, int renderHeight, View child)>();
+            foreach (var child in Children)
+            {
+                if (height <= 0)
+                {
+                    break;
+                }
+                var size = child.Measure(renderer, new Size(region.Width, height));
+                int renderHeight = Math.Min(height, size.Height);
+                //top -= size.Height;
+                height -= renderHeight;
+                //var r = new Region(left, top, size.Width, renderHeight);
+                //child.Render(renderer, r);
+                renderChildren.Add((size, renderHeight, child));
+            }
+
+            foreach (var (size, renderHeight, child) in Enumerable.Reverse(renderChildren))
+            {
+                var r = new Region(left, top, size.Width, renderHeight);
+                child.Render(renderer, r);
+                top += size.Height;
+            }
+        }
+
+        private void RenderVerticalScrollDown(Region region, ConsoleRenderer renderer)
+        {
+            var left = region.Left;
+            var top = region.Top;
             var height = region.Height;
 
             foreach (var child in Children)
@@ -177,31 +208,76 @@ namespace System.CommandLine.Rendering.Views
                 }
                 var size = child.Measure(renderer, new Size(region.Width, height));
                 int renderHeight = Math.Min(height, size.Height);
-                top -= size.Height;
-                height -= renderHeight;
                 var r = new Region(left, top, size.Width, renderHeight);
+                top += size.Height;
+                height -= renderHeight;
                 child.Render(renderer, r);
             }
         }
 
-        public override void Add(View child)
-        {
-            base.Add(child);
-            OnUpdated();
-        }
+        //public override void Add(View child)
+        //{
+        //    base.Add(child);
+        //    OnUpdated();
+        //}
 
-        public override bool Remove(View child)
-        {
-            var removed = base.Remove(child);
-            if (removed)
-            {
-                OnUpdated();
-            }
+        //public override bool Remove(View child)
+        //{
+        //    var removed = base.Remove(child);
+        //    if (removed)
+        //    {
+        //        OnUpdated();
+        //    }
 
-            return removed;
-        }
+        //    return removed;
+        //}
 
         // FromObservable fuer die Children, aber update ist hier add item, nicht content children changed
+
+        protected void Observe<T>(IObservable<T> observable, Func<T, View> viewProvider)
+        {
+            if (observable == null)
+            {
+                throw new ArgumentNullException(nameof(observable));
+            }
+
+            if (viewProvider == null)
+            {
+                throw new ArgumentNullException(nameof(viewProvider));
+            }
+
+            observable.Subscribe(new Observer<T>(this, viewProvider));
+        }
+
+        public static ScrollableLayoutView FromObservable<T>(IObservable<T> observable, ScrollDirection scrollDirection = ScrollDirection.Up, Func<T, View> viewProvider = null)
+        {
+            var rv = new ScrollableLayoutView(scrollDirection);
+            rv.Observe(observable, viewProvider ?? (x => ContentView.Create(x, new TextSpanFormatter())));
+            return rv;
+        }
+
+        private class Observer<T> : IObserver<T>
+        {
+            private readonly ScrollableLayoutView _layoutView;
+            private readonly Func<T, View> _viewProvider;
+            //private readonly TextSpanFormatter _textSpanFormatter = new TextSpanFormatter();
+
+            public Observer(ScrollableLayoutView layoutView, Func<T, View> viewProvider)
+            {
+                _layoutView = layoutView;
+                _viewProvider = viewProvider;
+            }
+
+            public void OnCompleted() { }
+
+            public void OnError(Exception error) { }
+
+            public void OnNext(T value)
+            {
+                _layoutView.Add(_viewProvider(value));
+                _layoutView.OnUpdated();
+            }
+        }
     }
 }
 
