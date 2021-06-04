@@ -6,8 +6,11 @@ namespace System.CommandLine.Rendering
     public class Region
     {
         public static readonly Region EntireTerminal = new EntireTerminalRegion();
-        
-        public static readonly Region Scrolling = new ScrollingTerminalRegion();
+
+        private static Lazy<Region> _scrollingLazy = new Lazy<Region>(() => new ScrollingTerminalRegion());
+        public static Region Scrolling => _scrollingLazy.Value;
+
+        public static TestTerminal TestDelegate;
 
         public Region(
             int left,
@@ -37,13 +40,13 @@ namespace System.CommandLine.Rendering
             }
 
             Height = height ??
-                     (Console.IsOutputRedirected
+                     (TestDelegate?.IsOutputRedirected ?? Console.IsOutputRedirected
                           ? 100
-                          : Console.WindowHeight);
+                          : TestDelegate?.Height ?? Console.WindowHeight);
             Width = width ??
-                    (Console.IsOutputRedirected
+                    (TestDelegate?.IsOutputRedirected ?? Console.IsOutputRedirected
                          ? 100
-                         : Console.WindowWidth);
+                         : TestDelegate?.Width ?? Console.WindowWidth);
             Top = top;
             Left = left;
 

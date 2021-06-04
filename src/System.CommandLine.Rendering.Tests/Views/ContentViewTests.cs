@@ -123,6 +123,26 @@ namespace System.CommandLine.Rendering.Tests.Views
         }
 
         [Fact]
+        public void Render_writes_span_in_region2()
+        {
+            
+            var contentView = new ContentView("One Two Three Four Five Six Seven Eight Nine Ten");
+            _terminal.IsOutputRedirected = false;
+            _terminal.Height = 3;
+            _terminal.Width = 5;
+
+            Region.TestDelegate = _terminal;
+            
+            contentView.Render(_renderer, Region.Scrolling);
+
+            _terminal.Events
+                     .Should()
+                     .BeEquivalentSequenceTo(
+                                             new CursorPositionChanged(new Point(0, 0)),
+                                             new ContentWritten("Four"));
+        }
+
+        [Fact]
         public void Views_created_from_an_observable_can_be_updated_by_the_observable()
         {
             var observable = new TestObservable();
