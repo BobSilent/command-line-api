@@ -13,22 +13,40 @@ namespace System.CommandLine.Rendering
             IConsole console,
             Region region) : base(console.Out, region)
         {
+            _viewPort = Region.EntireTerminal;
         }
 
         protected override void SetCursorPosition(int? left = null, int? top = null)
         {
+            var top2 = top + 1;
+            var left2 = left + 1;
+            if (_viewPort.Bottom < top2)
+            {
+                var lines = top2 - _viewPort.Bottom;
+                Writer.Write(
+                             Cursor.Scroll.Up(lines)
+                                   .EscapeSequence);
+            }
+            if (_viewPort.Top > top2)
+            {
+                var lines = _viewPort.Top - top2;
+                Writer.Write(
+                             Cursor.Scroll.Down(lines)
+                                   .EscapeSequence);
+            }
+
             if (Region == Region.Scrolling)
             {
                 Writer.WriteLine(
                     Cursor.Move
-                          .ToLocation(left: left + 1)
+                          .ToLocation(left: left2, top: top2)
                           .EscapeSequence);
             }
             else
             {
                 Writer.Write(
                     Cursor.Move
-                          .ToLocation(left: left + 1, top: top + 1)
+                          .ToLocation(left: left2, top: top2)
                           .EscapeSequence);
             }
         }
@@ -141,5 +159,7 @@ namespace System.CommandLine.Rendering
                 [nameof(StyleSpan.UnderlinedOff)] = Ansi.Text.UnderlinedOff,
                 [nameof(StyleSpan.UnderlinedOn)] = Ansi.Text.UnderlinedOn,
             };
+
+        private Region _viewPort;
     }
 }

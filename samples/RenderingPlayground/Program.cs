@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.CommandLine.Invocation;
+using System.CommandLine.IO;
 using System.CommandLine.Rendering;
 using System.CommandLine.Rendering.Views;
 using System.IO;
@@ -80,9 +81,17 @@ namespace RenderingPlayground
                     break;
 
                 case SampleName.Moby:
-                    consoleRenderer.RenderToRegion(
-                        $"Call me {StyleSpan.BoldOn()}{StyleSpan.UnderlinedOn()}Ishmael{StyleSpan.UnderlinedOff()}{StyleSpan.BoldOff()}. Some years ago -- never mind how long precisely -- having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen and regulating the circulation. Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and {ForegroundColorSpan.Rgb(60, 0, 0)}methodically{ForegroundColorSpan.Reset()} {ForegroundColorSpan.Rgb(90, 0, 0)}knocking{ForegroundColorSpan.Reset()} {ForegroundColorSpan.Rgb(120, 0, 0)}people's{ForegroundColorSpan.Reset()} {ForegroundColorSpan.Rgb(160, 0, 0)}hats{ForegroundColorSpan.Reset()} {ForegroundColorSpan.Rgb(220, 0, 0)}off{ForegroundColorSpan.Reset()} then, I account it high time to get to sea as soon as I can. This is my substitute for pistol and ball. With a philosophical flourish Cato throws himself upon his sword; I quietly take to the ship. There is nothing surprising in this. If they but knew it, almost all men in their degree, some time or other, cherish very nearly the same feelings towards the ocean with me.",
-                        region);
+                    var contentView = new ContentView($"Call me {StyleSpan.BoldOn()}{StyleSpan.UnderlinedOn()}Ishmael{StyleSpan.UnderlinedOff()}{StyleSpan.BoldOff()}. Some years ago -- never mind how long precisely -- having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen and regulating the circulation. Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and {ForegroundColorSpan.Rgb(60, 0, 0)}methodically{ForegroundColorSpan.Reset()} {ForegroundColorSpan.Rgb(90, 0, 0)}knocking{ForegroundColorSpan.Reset()} {ForegroundColorSpan.Rgb(120, 0, 0)}people's{ForegroundColorSpan.Reset()} {ForegroundColorSpan.Rgb(160, 0, 0)}hats{ForegroundColorSpan.Reset()} {ForegroundColorSpan.Rgb(220, 0, 0)}off{ForegroundColorSpan.Reset()} then, I account it high time to get to sea as soon as I can. This is my substitute for pistol and ball. With a philosophical flourish Cato throws himself upon his sword; I quietly take to the ship. There is nothing surprising in this. If they but knew it, almost all men in their degree, some time or other, cherish very nearly the same feelings towards the ocean with me.");
+
+                    var stackView = new StackLayoutView(Orientation.Vertical);
+                    stackView.Add(contentView);
+                    var regio2 = Region.Scrolling;
+                    var size = contentView.Measure(consoleRenderer, new Size(regio2.Width, regio2.Height));
+                    //console.Out.WriteLine(terminal?.DetectOutputMode());
+                    console.Out.WriteLine(regio2.Width.ToString());
+                    console.Out.WriteLine($"{size.Width}x{size.Height}");
+                    contentView.Render(consoleRenderer,
+                                       Region.Scrolling);
                     break;
 
                 case SampleName.Processes:
@@ -95,15 +104,17 @@ namespace RenderingPlayground
 
                 case SampleName.TableView:
                 {
-                        //var table = new TableView<Process>
-                        //            {
-                        //                Items = Process.GetProcesses().Where(x => !string.IsNullOrEmpty(x.MainWindowTitle)).OrderBy(p => p.ProcessName).ToList()
-                        //            };
-                        //table.AddColumn(process => $"{process.ProcessName} ", "Name");
+                        var table = new TableView<Process>
+                        {
+                            Items = Process.GetProcesses().Where(x => !string.IsNullOrEmpty(x.MainWindowTitle)).OrderBy(p => p.ProcessName).ToList()
+                        };
+                        table.AddColumn(process => $"{process.ProcessName} ", "Name");
                         //table.AddColumn(process => ContentView.FromObservable(process.TrackCpuUsage(), x => $"{x.UsageTotal:P}"), "CPU", ColumnDefinition.Star(1));
 
-                        //var screen = new ScreenView(renderer: consoleRenderer, console) { Child = table };
-                        //screen.Render();
+                        //table.Render(consoleRenderer, Region.Scrolling);
+                        var screen = new ScreenView(renderer: consoleRenderer, console) { Child = table };
+                        screen.Render();
+                        break;
 
                     var log = new ScrollingConsole();
                     var view = ScrollableLayoutView.FromObservable(log, ScrollDirection.Up);
@@ -131,8 +142,8 @@ namespace RenderingPlayground
                     gridView.SetChild(new ContentView("Final Static Text Line"), 0, 1);
 
                         //var renderRegion = new Region(13, 5, height: 3);
-                        var screen = new ScreenView(renderer: consoleRenderer, console) { Child = gridView };
-                    screen.Render(Region.Scrolling);
+                        var screen2 = new ScreenView(renderer: consoleRenderer, console) { Child = gridView };
+                    screen2.Render(Region.Scrolling);
                     //console.Append(view);
                     //view.Render(consoleRenderer, renderRegion);
 

@@ -102,6 +102,8 @@ namespace System.CommandLine.Rendering
                 public static AnsiControlCode UpOne { get; } = $"{Esc}[S";
 
                 public static AnsiControlCode DownOne { get; } = $"{Esc}[T";
+                public static AnsiControlCode Down(int? lines) => $"{Esc}[{(lines == null ? string.Empty : lines)}T";
+                public static AnsiControlCode Up(int? lines) => $"{Esc}[{(lines == null ? string.Empty : lines)}S";
             }
 
             public static AnsiControlCode Hide { get; } = $"{Esc}[?25l";
